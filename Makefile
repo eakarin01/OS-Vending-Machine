@@ -1,4 +1,4 @@
 all:
-	gcc VendMach.c -o run
+	gcc VendMach.c -pthread -o run
 clean:
 	rm run
