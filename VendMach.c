@@ -207,7 +207,7 @@ void main()
     pthread_t conthread[CNUM];
     pthread_mutex_t slock[SNUM];
     pthread_cond_t supq[SNUM];
-    pthread_cond_t conq[SNUM];
+    pthread_cond_t conq[CNUM];
     struct argument suparg[SNUM];
     struct argument conarg[CNUM];
     // initial all queue
@@ -233,6 +233,7 @@ void main()
         suparg[i].wakeup = &conq[i];
         pthread_create(&supthread[i],NULL,&supplierDo,&suparg[i]);
     }
+    // loop for create consumer thread
     for(int i=0;i<CNUM;i++)
     {
         // set parameter to send to thread func
@@ -241,7 +242,8 @@ void main()
         int idx = indexOfSupply(mysup,sizeof(mysup)/sizeof(mysup[0]),mycon[i].name);
         conarg[i].supply = &supply[idx];
         conarg[i].lock = &slock[idx];
-        conarg[i].queue = &conq[idx];
+        // edit independent queue here
+        conarg[i].queue = &conq[i];
         conarg[i].wakeup = &supq[idx];
         pthread_create(&conthread[i],NULL,&consumerDo,&conarg[i]);
     }
