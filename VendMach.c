@@ -7,7 +7,7 @@
 
 #define SNUM 5
 #define CNUM 8
-#define MAXQ 20
+#define MAXQ 100
 
 
 typedef struct conf {
@@ -103,6 +103,9 @@ int indexOfSupply(cfile sup[],int size,char name[])
 
 void *supplierDo(void* arg)
 {
+    char strout[512];
+    char *c_time_string;
+    time_t tm;
     // convert argument
     struct argument *myarg = arg;
     while(1){
@@ -112,21 +115,32 @@ void *supplierDo(void* arg)
     while ( *(myarg->supply) >= MAXQ )
     {
         // move to wait queue
-        printf("\e[93m%s supplier going to wait\n", myarg->cfg->name);
+        memset(strout,0,512);
+        tm = time(NULL);
+        c_time_string = strtok(ctime( &tm ),"\n");
+        sprintf(strout,"\e[93m%s %s supplier going to wait\n",c_time_string, myarg->cfg->name);
+        write(2,strout,sizeof(strout));
         pthread_cond_wait( myarg->queue , myarg->lock   );
     }
     // when can pass from while unit++
     (*(myarg->supply))++;
-    printf("\e[92m%s supplied 1 unit. stock after = %d\n",myarg->cfg->name,*(myarg->supply));
+    memset(strout,0,512);
+    tm = time(NULL);
+    c_time_string = strtok(ctime( &tm ),"\n");
+    sprintf(strout,"\e[92m%s %s supplied 1 unit. stock after = %d\n",c_time_string, myarg->cfg->name,*(myarg->supply));
+    write(2,strout,sizeof(strout));
     // wake up consumer queue
     pthread_cond_signal( myarg->wakeup );
     pthread_mutex_unlock( myarg->lock );
-    sleep(1);
+    sleep(myarg->cfg->interval);
     }
 }
 
 void *consumerDo(void* arg)
 {
+    char strout[512];
+    char *c_time_string;
+    time_t tm;
     // convert argument
     struct argument *myarg = arg;
     while(1){
@@ -136,16 +150,24 @@ void *consumerDo(void* arg)
     while ( *(myarg->supply) <= 0 )
     {
         // move to wait queue
-        printf("\e[94m%s consumer going to wait\n", myarg->cfg->name);
+        memset(strout,0,512);
+        tm = time(NULL);
+        c_time_string = strtok(ctime( &tm ),"\n");
+        sprintf(strout,"\e[94m%s %s consumer going to wait\n",c_time_string, myarg->cfg->name);
+        write(2,strout,sizeof(strout));
         pthread_cond_wait( myarg->queue , myarg->lock   );
     }
     // when can pass from while unit--
     (*(myarg->supply))--;
-    printf("\e[31m%s consumed 1 unit. stock after = %d\n",myarg->cfg->name,*(myarg->supply));
+    memset(strout,0,512);
+    tm = time(NULL);
+    c_time_string = strtok(ctime( &tm ),"\n");
+    sprintf(strout,"\e[31m%s %s consumed 1 unit. stock after = %d\n",c_time_string,myarg->cfg->name,*(myarg->supply));
+    write(2,strout,sizeof(strout));
     // wake up supplier queue
     pthread_cond_signal( myarg->wakeup );
     pthread_mutex_unlock( myarg->lock );
-    sleep(1);
+    sleep(myarg->cfg->interval);
     }
 }
 
