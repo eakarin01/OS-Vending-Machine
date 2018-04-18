@@ -101,75 +101,112 @@ int indexOfSupply(cfile sup[],int size,char name[])
 
 void *supplierDo(void* arg)
 {
+    // convert argument
+    struct argument *myarg = arg;
+    // local variable
     char strout[512];
     char *c_time_string;
     time_t tm;
-    // convert argument
-    struct argument *myarg = arg;
-    while(1){
-    // critical section
-    pthread_mutex_lock( myarg->lock );
-    // check if full
-    if ( *(myarg->supply) >= MAXQ )
+    int mul_time = 1;
+    int count_repeat = 0;
+    while(1)
     {
-        // don't increase supply
-        memset(strout,0,512);
-        tm = time(NULL);
-        c_time_string = strtok(ctime( &tm ),"\n");
-        sprintf(strout,"\e[93m%s %s supplier going to wait\n",c_time_string, myarg->cfg->name);
-        write(2,strout,sizeof(strout));
-    }
-    // when is not full
-    else
-    {
-        // increase supply
-        (*(myarg->supply))++;
-        memset(strout,0,512);
-        tm = time(NULL);
-        c_time_string = strtok(ctime( &tm ),"\n");
-        sprintf(strout,"\e[92m%s %s supplied 1 unit. stock after = %d\n",c_time_string, myarg->cfg->name,*(myarg->supply));
-        write(2,strout,sizeof(strout));
-    }
-    pthread_mutex_unlock( myarg->lock );
-    // waiting follow by interval
-    sleep(myarg->cfg->interval);
+        // set sleep time
+        int sleep_time = myarg->cfg->interval*mul_time;
+        sleep_time = (sleep_time>60)?60:sleep_time;
+        // waiting follow by interval
+        sleep(myarg->cfg->interval*mul_time);
+        // critical section
+        pthread_mutex_lock( myarg->lock );
+        // check if full
+        if ( *(myarg->supply) >= MAXQ )
+        {
+            // don't increase supply
+            memset(strout,0,512);
+            tm = time(NULL);
+            c_time_string = strtok(ctime( &tm ),"\n");
+            sprintf(strout,"\e[93m%s %s supplier going to wait\n",c_time_string, myarg->cfg->name);
+            write(2,strout,sizeof(strout));
+            // increase wait count time
+            count_repeat++;
+            // when loop repeat eq with config
+            if (count_repeat >= myarg->cfg->repeat)
+            {
+                // increase mul time
+                mul_time++;
+                count_repeat = 0;
+            }
+        }
+        // when is not full
+        else
+        {
+            // increase supply
+            (*(myarg->supply))++;
+            memset(strout,0,512);
+            tm = time(NULL);
+            c_time_string = strtok(ctime( &tm ),"\n");
+            sprintf(strout,"\e[92m%s %s supplied 1 unit. stock after = %d\n",c_time_string, myarg->cfg->name,*(myarg->supply));
+            write(2,strout,sizeof(strout));
+            // reset mul time
+            mul_time = 1;
+        }
+        pthread_mutex_unlock( myarg->lock );
     }
 }
 
 void *consumerDo(void* arg)
 {
+    // convert argument
+    struct argument *myarg = arg;
+    // local variable
     char strout[512];
     char *c_time_string;
     time_t tm;
-    // convert argument
-    struct argument *myarg = arg;
-    while(1){
-    // critical section
-    pthread_mutex_lock( myarg->lock );
-    // check if empty
-    if ( *(myarg->supply) <= 0 )
+    int mul_time = 1;
+    int count_repeat = 0;
+    while(1)
     {
-        // don't decrease supply
-        memset(strout,0,512);
-        tm = time(NULL);
-        c_time_string = strtok(ctime( &tm ),"\n");
-        sprintf(strout,"\e[94m%s %s consumer going to wait\n",c_time_string, myarg->cfg->name);
-        write(2,strout,sizeof(strout));
-    }
-    // when is not empty
-    else
-    {
-        // decrease supply
-        (*(myarg->supply))--;
-        memset(strout,0,512);
-        tm = time(NULL);
-        c_time_string = strtok(ctime( &tm ),"\n");
-        sprintf(strout,"\e[31m%s %s consumed 1 unit. stock after = %d\n",c_time_string,myarg->cfg->name,*(myarg->supply));
-        write(2,strout,sizeof(strout));
-    }
-    pthread_mutex_unlock( myarg->lock );
-    // waiting follow by interval
-    sleep(myarg->cfg->interval);
+        // set sleep time
+        int sleep_time = myarg->cfg->interval*mul_time;
+        sleep_time = (sleep_time>60)?60:sleep_time;
+        // waiting follow by interval
+        sleep(myarg->cfg->interval);
+        // critical section
+        pthread_mutex_lock( myarg->lock );
+        // check if empty
+        if ( *(myarg->supply) <= 0 )
+        {
+            // don't decrease supply
+            memset(strout,0,512);
+            tm = time(NULL);
+            c_time_string = strtok(ctime( &tm ),"\n");
+            sprintf(strout,"\e[94m%s %s consumer going to wait\n",c_time_string, myarg->cfg->name);
+            write(2,strout,sizeof(strout));
+            // increase wait count time
+            count_repeat++;
+            // when loop repeat eq with config
+            if (count_repeat >= myarg->cfg->repeat)
+            {
+                // increase mul time
+                mul_time++;
+                count_repeat = 0;
+
+            }
+        }
+        // when is not empty
+        else
+        {
+            // decrease supply
+            (*(myarg->supply))--;
+            memset(strout,0,512);
+            tm = time(NULL);
+            c_time_string = strtok(ctime( &tm ),"\n");
+            sprintf(strout,"\e[31m%s %s consumed 1 unit. stock after = %d\n",c_time_string,myarg->cfg->name,*(myarg->supply));
+            write(2,strout,sizeof(strout));
+            // reset mul time
+            mul_time = 1;
+        }
+        pthread_mutex_unlock( myarg->lock );
     }
 }
 
