@@ -125,7 +125,7 @@ void *supplierDo(void* arg)
             memset(strout,0,512);
             tm = time(NULL);
             c_time_string = strtok(ctime( &tm ),"\n");
-            sprintf(strout,"\e[93m%s %s supplier going to wait\n",c_time_string, myarg->cfg->name);
+            sprintf(strout,"\e[31m%s %s supplier going to wait\n",c_time_string, myarg->cfg->name);
             write(2,strout,sizeof(strout));
             // increase wait count time
             count_repeat++;
@@ -201,7 +201,7 @@ void *consumerDo(void* arg)
             memset(strout,0,512);
             tm = time(NULL);
             c_time_string = strtok(ctime( &tm ),"\n");
-            sprintf(strout,"\e[31m%s %s consumed 1 unit. stock after = %d\n",c_time_string,myarg->cfg->name,*(myarg->supply));
+            sprintf(strout,"\e[93m%s %s consumed 1 unit. stock after = %d\n",c_time_string,myarg->cfg->name,*(myarg->supply));
             write(2,strout,sizeof(strout));
             // reset mul time
             mul_time = 1;
@@ -223,7 +223,7 @@ void main()
     init_supply(supply,sizeof(supply)/sizeof(supply[0]));
     loadConsCfg(mycon,sizeof(mycon)/sizeof(mycon[0]));
     printf("Vending Machine Ready!!\n");
-
+    /*
     // print to test bug
     for (int i=0;i<SNUM;i++)
     {
@@ -239,8 +239,8 @@ void main()
         printf("Interval : %d\n",mycon[i].interval);
         printf("Repeat : %d\n\n",mycon[i].repeat);
     }
-
     printf("---------------------------------------\n");
+    */
     // create supplier & consumer thread
     pthread_t supthread[SNUM];
     pthread_t conthread[CNUM];
