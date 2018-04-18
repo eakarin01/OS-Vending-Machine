@@ -22,8 +22,6 @@ struct argument
     cfile *cfg;
     int *supply;
     pthread_mutex_t *lock;
-    pthread_cond_t *queue;
-    pthread_cond_t *wakeup;
 };
 
 
@@ -112,26 +110,28 @@ void *supplierDo(void* arg)
     // critical section
     pthread_mutex_lock( myarg->lock );
     // check if full
-    while ( *(myarg->supply) >= MAXQ )
+    if ( *(myarg->supply) >= MAXQ )
     {
-        // move to wait queue
+        // don't increase supply
         memset(strout,0,512);
         tm = time(NULL);
         c_time_string = strtok(ctime( &tm ),"\n");
         sprintf(strout,"\e[93m%s %s supplier going to wait\n",c_time_string, myarg->cfg->name);
         write(2,strout,sizeof(strout));
-        pthread_cond_wait( myarg->queue , myarg->lock   );
     }
-    // when can pass from while unit++
-    (*(myarg->supply))++;
-    memset(strout,0,512);
-    tm = time(NULL);
-    c_time_string = strtok(ctime( &tm ),"\n");
-    sprintf(strout,"\e[92m%s %s supplied 1 unit. stock after = %d\n",c_time_string, myarg->cfg->name,*(myarg->supply));
-    write(2,strout,sizeof(strout));
-    // wake up consumer queue
-    pthread_cond_signal( myarg->wakeup );
+    // when is not full
+    else
+    {
+        // increase supply
+        (*(myarg->supply))++;
+        memset(strout,0,512);
+        tm = time(NULL);
+        c_time_string = strtok(ctime( &tm ),"\n");
+        sprintf(strout,"\e[92m%s %s supplied 1 unit. stock after = %d\n",c_time_string, myarg->cfg->name,*(myarg->supply));
+        write(2,strout,sizeof(strout));
+    }
     pthread_mutex_unlock( myarg->lock );
+    // waiting follow by interval
     sleep(myarg->cfg->interval);
     }
 }
@@ -147,26 +147,28 @@ void *consumerDo(void* arg)
     // critical section
     pthread_mutex_lock( myarg->lock );
     // check if empty
-    while ( *(myarg->supply) <= 0 )
+    if ( *(myarg->supply) <= 0 )
     {
-        // move to wait queue
+        // don't decrease supply
         memset(strout,0,512);
         tm = time(NULL);
         c_time_string = strtok(ctime( &tm ),"\n");
         sprintf(strout,"\e[94m%s %s consumer going to wait\n",c_time_string, myarg->cfg->name);
         write(2,strout,sizeof(strout));
-        pthread_cond_wait( myarg->queue , myarg->lock   );
     }
-    // when can pass from while unit--
-    (*(myarg->supply))--;
-    memset(strout,0,512);
-    tm = time(NULL);
-    c_time_string = strtok(ctime( &tm ),"\n");
-    sprintf(strout,"\e[31m%s %s consumed 1 unit. stock after = %d\n",c_time_string,myarg->cfg->name,*(myarg->supply));
-    write(2,strout,sizeof(strout));
-    // wake up supplier queue
-    pthread_cond_signal( myarg->wakeup );
+    // when is not empty
+    else
+    {
+        // decrease supply
+        (*(myarg->supply))--;
+        memset(strout,0,512);
+        tm = time(NULL);
+        c_time_string = strtok(ctime( &tm ),"\n");
+        sprintf(strout,"\e[31m%s %s consumed 1 unit. stock after = %d\n",c_time_string,myarg->cfg->name,*(myarg->supply));
+        write(2,strout,sizeof(strout));
+    }
     pthread_mutex_unlock( myarg->lock );
+    // waiting follow by interval
     sleep(myarg->cfg->interval);
     }
 }
@@ -206,16 +208,8 @@ void main()
     pthread_t supthread[SNUM];
     pthread_t conthread[CNUM];
     pthread_mutex_t slock[SNUM];
-    pthread_cond_t supq[SNUM];
-    pthread_cond_t conq[CNUM];
     struct argument suparg[SNUM];
     struct argument conarg[CNUM];
-    // initial all queue
-    for(int i=0;i<SNUM;i++)
-    {
-        pthread_cond_init(&supq[i],NULL);
-        pthread_cond_init(&conq[i],NULL);
-    }
     // initial all supply mutex
     for(int i=0;i<SNUM;i++)
     {
@@ -229,8 +223,6 @@ void main()
         suparg[i].cfg = &mysup[i];
         suparg[i].supply = &supply[i];
         suparg[i].lock = &slock[i];
-        suparg[i].queue = &supq[i];
-        suparg[i].wakeup = &conq[i];
         pthread_create(&supthread[i],NULL,&supplierDo,&suparg[i]);
     }
     // loop for create consumer thread
@@ -242,12 +234,8 @@ void main()
         int idx = indexOfSupply(mysup,sizeof(mysup)/sizeof(mysup[0]),mycon[i].name);
         conarg[i].supply = &supply[idx];
         conarg[i].lock = &slock[idx];
-        // edit independent queue here
-        conarg[i].queue = &conq[i];
-        conarg[i].wakeup = &supq[idx];
         pthread_create(&conthread[i],NULL,&consumerDo,&conarg[i]);
     }
-
 
     // wait for all thread finished.
     for(int i=0;i<SNUM;i++)
