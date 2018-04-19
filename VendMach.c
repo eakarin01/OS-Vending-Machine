@@ -115,7 +115,7 @@ void *supplierDo(void* arg)
         int sleep_time = myarg->cfg->interval*mul_time;
         sleep_time = (sleep_time>60)?60:sleep_time;
         // waiting follow by interval
-        sleep(myarg->cfg->interval*mul_time);
+        sleep(sleep_time);
         // critical section
         pthread_mutex_lock( myarg->lock );
         // check if full
@@ -149,6 +149,7 @@ void *supplierDo(void* arg)
             write(2,strout,sizeof(strout));
             // reset mul time
             mul_time = 1;
+            count_repeat = 0;
         }
         pthread_mutex_unlock( myarg->lock );
     }
@@ -170,7 +171,7 @@ void *consumerDo(void* arg)
         int sleep_time = myarg->cfg->interval*mul_time;
         sleep_time = (sleep_time>60)?60:sleep_time;
         // waiting follow by interval
-        sleep(myarg->cfg->interval);
+        sleep(sleep_time);
         // critical section
         pthread_mutex_lock( myarg->lock );
         // check if empty
@@ -205,6 +206,7 @@ void *consumerDo(void* arg)
             write(2,strout,sizeof(strout));
             // reset mul time
             mul_time = 1;
+            count_repeat = 0;
         }
         pthread_mutex_unlock( myarg->lock );
     }
